@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>影视导航</title>
+    <title>影搜</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
     <style>
         * {
@@ -77,31 +77,92 @@
             color: #fff;
             word-break: break-all;
         }
+        /* 多链接选择弹窗样式 */
+        .link-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.8);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .link-modal-content {
+            background-color: #1e1e1e;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 400px;
+        }
+        .link-modal h3 {
+            margin-bottom: 20px;
+            color: #0ea5e9;
+            text-align: center;
+        }
+        .link-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            border: none;
+            border-radius: 8px;
+            background-color: #0ea5e9;
+            color: #fff;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .close-btn {
+            background-color: #444;
+        }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>🎬 影视导航</h1>
+        <h1>🎬 影搜</h1>
         <input type="text" id="searchInput" placeholder="🔍 搜索影视...">
         <div id="content"></div>
     </div>
 
+    <!-- 多链接选择弹窗 -->
+    <div class="link-modal" id="linkModal">
+        <div class="link-modal-content">
+            <h3 id="modalTitle">选择网盘链接</h3>
+            <div id="linkButtons"></div>
+            <button class="link-btn close-btn" onclick="closeLinkModal()">取消</button>
+        </div>
+    </div>
+
     <script>
         // ==============================================
-        // 🔥 在这里添加你的所有影视链接（以后加内容只改这里）
-        // 格式：["分类","图标","名称","链接"]
+        // 🔥 在这里添加你的所有影视链接（支持多链接！）
+        // 格式：["分类","图标","名称",[{"网盘名":"链接"},{"网盘名":"链接"}]]
         // ==============================================
         const movieData = [
-            ["电视剧","fa-television","重案解密","https://pan.quark.cn/s/xxxx"],
-            ["电视剧","fa-television","狂飙","https://pan.quark.cn/s/xxxx"],
-            ["电视剧","fa-television","三体","https://pan.baidu.com/s/xxxx"],
-            ["电影","fa-film","流浪地球2","https://pan.quark.cn/s/xxxx"],
-            ["电影","fa-film","满江红","https://pan.baidu.com/s/xxxx"],
-            ["动漫","fa-play-circle","海贼王","https://pan.quark.cn/s/xxxx"],
-            ["动漫","fa-play-circle","火影忍者","https://pan.baidu.com/s/xxxx"],
-            ["综艺","fa-smile-o","奔跑吧","https://pan.quark.cn/s/xxxx"],
-            ["纪录片","fa-book","地球脉动","https://pan.baidu.com/s/xxxx"]
+            // 重案解密 有3个链接的写法示例
+            ["电视剧","fa-television","重案解密",[
+                {"夸克": "https://pan.quark.cn/s/你的夸克链接"},
+                {"百度": "https://pan.baidu.com/s/你的百度链接"},
+                {"迅雷": "https://pan.xunlei.com/s/你的迅雷链接"}
+            ]],
+            ["电视剧","fa-television","狂飙",[
+                {"夸克": "https://pan.quark.cn/s/你的链接"}
+            ]],
+            ["电视剧","fa-television","三体",[
+                {"百度": "https://pan.baidu.com/s/你的链接"}
+            ]],
+            ["电影","fa-film","流浪地球2",[
+                {"夸克": "https://pan.quark.cn/s/你的链接"}
+            ]],
+            ["电影","fa-film","满江红",[
+                {"百度": "https://pan.baidu.com/s/你的链接"}
+            ]]
         ];
+
+        // 当前点击的影视链接数据
+        let currentLinks = [];
 
         // 初始化渲染
         window.onload = function() {
@@ -135,10 +196,38 @@
                     const card = document.createElement('div');
                     card.className = 'card';
                     card.innerHTML = `<i class="fa ${item[1]}"></i><div class="card-title">${item[2]}</div>`;
-                    card.onclick = () => window.open(item[3], '_blank');
+                    // 点击卡片，弹出多链接选择框
+                    card.onclick = () => openLinkModal(item[2], item[3]);
                     grid.appendChild(card);
                 });
             }
+        }
+
+        // 打开多链接弹窗
+        function openLinkModal(title, links) {
+            currentLinks = links;
+            document.getElementById('modalTitle').innerText = title;
+            const linkButtonsDiv = document.getElementById('linkButtons');
+            linkButtonsDiv.innerHTML = '';
+            // 生成每个网盘的按钮
+            links.forEach(linkObj => {
+                for (const name in linkObj) {
+                    const btn = document.createElement('button');
+                    btn.className = 'link-btn';
+                    btn.innerText = name;
+                    btn.onclick = () => {
+                        window.open(linkObj[name], '_blank');
+                        closeLinkModal();
+                    };
+                    linkButtonsDiv.appendChild(btn);
+                }
+            });
+            document.getElementById('linkModal').style.display = 'flex';
+        }
+
+        // 关闭多链接弹窗
+        function closeLinkModal() {
+            document.getElementById('linkModal').style.display = 'none';
         }
     </script>
 </body>
