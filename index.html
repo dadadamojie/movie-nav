@@ -3,103 +3,158 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>影视动漫导航</title>
-<!-- 国内稳定 CDN -->
+<title>影视导航</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:#121212;color:#e0e0e0;font-family:system-ui,sans-serif;min-height:100vh;padding:20px}
+body{background:#121212;color:#e0e0e0;font-family:system-ui,sans-serif;padding:20px}
 .container{max-width:1000px;margin:0 auto}
-h1{text-align:center;margin-bottom:24px;font-size:24px;color:#fff}
-.category{margin-bottom:30px}
-.category h2{font-size:18px;margin-bottom:12px;color:#ccc;border-left:4px solid #0ea5e9;padding-left:10px}
+h1{text-align:center;margin-bottom:24px}
+#searchInput{width:100%;padding:12px 16px;background:#1e1e1e;color:#fff;border:1px solid #0ea5e9;border-radius:8px;margin-bottom:16px}
+.tools{display:none;margin-bottom:20px}
+textarea{width:100%;height:140px;background:#1e1e1e;color:#fff;border:1px solid #333;border-radius:8px;padding:12px}
+.import-btn{margin-top:10px;padding:10px 16px;background:#0ea5e9;color:#fff;border:none;border-radius:8px}
+.category{margin-bottom:24px}
+.category h2{font-size:16px;margin-bottom:10px;color:#ccc;border-left:3px solid #0ea5e9;padding-left:8px}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
-.card{background:#1e1e1e;border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;text-decoration:none;color:#e0e0e0;border:1px solid #333}
-.card:hover{background:#2a2a2a;border-color:#0ea5e9}
-.card .icon{width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:#27272a;border-radius:8px;color:#0ea5e9;font-size:16px}
-.card .title{font-size:14px;line-height:1.3}
-
-.tools{margin-bottom:20px}
-textarea{width:100%;height:140px;background:#1e1e1e;color:#fff;border:1px solid #333;border-radius:8px;padding:12px;resize:none}
-.import-btn{margin-top:10px;padding:10px 16px;background:#0ea5e9;color:#fff;border:none;border-radius:8px;cursor:pointer}
-#searchInput{width:100%;padding:12px 16px;background:#1e1e1e;color:#fff;border:1px solid #333;border-radius:8px;margin-bottom:16px;font-size:14px;border:1px solid #0ea5e9;outline:none}
+.card{background:#1e1e1e;border-radius:10px;padding:14px;display:flex;align-items:center;gap:10px;cursor:pointer;border:1px solid #333}
+.card:hover{border-color:#0ea5e9;background:#222}
+.icon{width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:#27272a;border-radius:6px;color:#0ea5e9}
+.modal{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:none;align-items:center;justify-content:center}
+.modal-content{background:#1e1e1e;border:1px solid #0ea5e9;border-radius:12px;padding:20px;width:90%;max-width:400px}
+.modal h3{margin-bottom:14px;text-align:center}
+.episode-item{padding:12px;background:#27272a;border-radius:8px;margin:6px 0;cursor:pointer}
+.episode-item:hover{background:#0ea5e9}
+.close-btn{margin-top:12px;padding:10px;background:#333;color:#fff;border:none;border-radius:8px;width:100%}
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>🎬 影视动漫导航</h1>
-  
-  <!-- 搜索框 -->
-  <input type="text" id="searchInput" placeholder="🔍 搜索已导入的影视剧..." oninput="filterCards()">
+  <h1>🎬 影视导航</h1>
+  <input type="text" id="searchInput" placeholder="🔍 搜索影视..." oninput="search()">
 
-  <div class="tools">
-    <textarea id="batchInput" placeholder='格式（一行一条）：
+  <div class="tools" id="adminPanel">
+    <textarea id="batchInput" placeholder="格式：
 分类,图标,名称,链接
-电影,fa-film,豆瓣电影,https://movie.douban.com
-电视剧,fa-tv,豆瓣剧集,https://movie.douban.com/tv
-动漫,fa-paper-plane,B站番剧,https://www.bilibili.com/anime
-'>
-    </textarea>
-    <button class="import-btn" onclick="importLinks()">批量导入并生成导航</button>
+电视剧,fa-television,重案解密,https://xxx
+电视剧,fa-television,重案解密,https://xxx"></textarea>
+    <button class="import-btn" onclick="importData()">导入链接</button>
   </div>
 
-  <div id="content"></div>
+  <div id="list"></div>
+</div>
+
+<div class="modal" id="pop">
+  <div class="modal-content">
+    <h3 id="popTitle"></h3>
+    <div id="popItems"></div>
+    <button class="close-btn" onclick="closePop()">关闭</button>
+  </div>
 </div>
 
 <script>
-let allCards = []; // 存储所有卡片用于搜索
+let allGroups = [];
 
-function importLinks() {
-  const text = document.getElementById('batchInput').value.trim();
-  const lines = text.split('\n').filter(l => l.trim());
-  const data = { 电影: [], 电视剧: [], 动漫: [] };
-  allCards = [];
+// 管理员快捷键 Ctrl+I 显示/隐藏导入框
+document.addEventListener('keydown', e => {
+  if(e.ctrlKey && e.key === 'i'){
+    e.preventDefault();
+    const p = document.getElementById('adminPanel');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+  }
+});
+
+function importData() {
+  const lines = document.getElementById('batchInput').value.trim().split('\n').filter(i=>i.trim());
+  allGroups = [];
+  const catMap = {};
 
   lines.forEach(line => {
-    const [cat, icon, title, link] = line.split(',');
-    if (cat && icon && title && link && data[cat] !== undefined) {
-      const item = { cat, icon, title, link };
-      data[cat].push(item);
-      allCards.push(item);
+    const [cat, ico, name, url] = line.split(',').map(p=>p.trim());
+    if(!cat || !ico || !name || !url) return;
+
+    // 自动识别平台
+    let platform = '网盘';
+    if(url.includes('quark.cn')) platform = '夸克';
+    else if(url.includes('baidu.com')) platform = '百度';
+    else if(url.includes('xunlei.com')) platform = '迅雷';
+
+    const displayName = `${name}（${platform}）`;
+    const key = `${cat}-${name}`;
+
+    if(!catMap[key]){
+      catMap[key] = {
+        cat: cat,
+        icon: ico,
+        title: name,
+        items: []
+      };
     }
+    catMap[key].items.push({ displayName, url });
   });
-  
-  renderCards(data);
+
+  // 转成数组
+  allGroups = Object.values(catMap);
+  renderCards();
 }
 
-function renderCards(data) {
+function renderCards() {
+  const catList = {};
+  allGroups.forEach(g => {
+    if(!catList[g.cat]) catList[g.cat] = [];
+    catList[g.cat].push(g);
+  });
+
   let html = '';
-  for (const cat in data) {
-    if(data[cat].length === 0) continue;
+  for(const cat in catList){
     html += `<div class="category"><h2>${cat}</h2><div class="grid">`;
-    data[cat].forEach(item => {
+    catList[cat].forEach(g=>{
       html += `
-<a class="card" href="${item.link}" target="_blank" data-title="${item.title.toLowerCase()}">
-  <div class="icon"><i class="fa ${item.icon}"></i></div>
-  <div class="title">${item.title}</div>
-</a>`;
+      <div class="card" onclick="openMenu('${g.title}', ${JSON.stringify(g.items).replace(/"/g, "'")})">
+        <div class="icon"><i class="fa ${g.icon}"></i></div>
+        <div>${g.title}</div>
+      </div>`;
     });
     html += `</div></div>`;
   }
-  document.getElementById('content').innerHTML = html;
+  document.getElementById('list').innerHTML = html;
 }
 
-// 搜索过滤函数
-function filterCards() {
-  const keyword = document.getElementById('searchInput').value.toLowerCase().trim();
-  const cards = document.querySelectorAll('.card');
-  
-  cards.forEach(card => {
-    const title = card.dataset.title;
-    card.style.display = title.includes(keyword) ? 'flex' : 'none';
-  });
-  
-  // 隐藏空分类
-  document.querySelectorAll('.category').forEach(cat => {
-     const visible = cat.querySelectorAll('.card[style="display: flex;"]').length;
-     cat.style.display = visible > 0 ? 'block' : 'none';
+function openMenu(title, itemsStr) {
+  // 把字符串里的单引号转回双引号，再解析
+  const items = JSON.parse(itemsStr.replace(/'/g, '"'));
+  document.getElementById('pop').style.display = 'flex';
+  document.getElementById('popTitle').innerText = title;
+  const box = document.getElementById('popItems');
+  box.innerHTML = '';
+  items.forEach(i=>{
+    const btn = document.createElement('div');
+    btn.className = 'episode-item';
+    btn.innerText = i.displayName;
+    btn.onclick = () => {
+      window.open(i.url, '_blank');
+      closePop();
+    };
+    box.appendChild(btn);
   });
 }
+
+function closePop() {
+  document.getElementById('pop').style.display = 'none';
+}
+
+function search() {
+  const kw = document.getElementById('searchInput').value.toLowerCase();
+  document.querySelectorAll('.card').forEach(c=>{
+    const text = c.innerText.toLowerCase();
+    c.style.display = text.includes(kw) ? 'flex' : 'none';
+  });
+}
+
+// 点击弹窗外部关闭
+document.getElementById('pop').addEventListener('click', function(e) {
+  if(e.target === this) closePop();
+});
 </script>
 </body>
 </html>
